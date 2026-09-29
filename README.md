@@ -3,10 +3,9 @@
 Aptsy makes everyday work with coding agents sharper. Bring the agent you already use — Claude Code, Cursor, Codex, Hermes, Goose, or OpenHands.
 
 - Surfaces the blind spots you and your agents miss
-- Learns from how your teammates work (enterprise only)
+- Optimize your everyday workflow
+- Learn from your teammates. Raise the average quality of work (enterprise only)
 - Use with cloud agents (enterprise only)
-
-The command is `aptsy`. Your chats and notes stay under `~/.aptsy`.
 
 ## Install
 
@@ -52,17 +51,6 @@ Check what has been learned:
 ```bash
 aptsy learn status
 ```
-
-## Where files live
-
-| Path | What it is |
-|------|------------|
-| `~/.aptsy/config.yml` | Config written by `aptsy init` |
-| `~/.aptsy/ingest_data/` | Local database |
-| `~/.aptsy/aptsy.pid` | Process id of the daemon |
-| macOS: `~/Library/Logs/aptsy.log` | Log file |
-| Linux: `/var/log/aptsy/aptsy.log` | Log file |
-| `~/.aptsy/hooks/aptsy-bridge` | Helper the agent hooks run |
 
 Aptsy listens on `127.0.0.1:45117` for hooks and `127.0.0.1:45118/mcp` for MCP. MCP entries are written only after that server is listening, either at the end of `aptsy init` or by `aptsy start` if init ran first.
 
