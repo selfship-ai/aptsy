@@ -384,6 +384,21 @@ run_init() {
   fi
 }
 
+print_install_welcome() {
+  info ""
+  info "You're all set — welcome to Aptsy."
+  info ""
+  info "Your agent chats are being captured locally. Open the dashboard in your browser:"
+  info ""
+  info "  http://127.0.0.1:45117"
+  info ""
+  info "Browse sessions, inspect messages, and adjust evaluation settings at:"
+  info ""
+  info "  http://127.0.0.1:45117/settings"
+  info ""
+  info "Install log: ${LOG}"
+}
+
 start_daemon() {
   # aptsy start registers the boot service and returns. sudo may prompt.
   if has_terminal; then
@@ -394,7 +409,6 @@ start_daemon() {
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
     if web_up && mcp_up; then
-      info "Stop it with: aptsy stop"
       return 0
     fi
     sleep 0.5
@@ -570,7 +584,7 @@ main() {
   "$APTSY" version </dev/null || true
   maybe_start
   run_init
-  info "Done. Install log: ${LOG}"
+  print_install_welcome
 }
 
 main "$@"
