@@ -23,8 +23,8 @@ On Windows, download `sslearn_*_windows_*.zip` from the [releases](https://githu
 To install one archive by hand:
 
 ```bash
-gh release download v0.1.0 --repo selfship-ai/aptsy --pattern 'sslearn_0.1.0_darwin_arm64.tar.gz'
-tar -xzf sslearn_0.1.0_darwin_arm64.tar.gz
+gh release download --repo selfship-ai/aptsy --pattern 'sslearn_*_darwin_arm64.tar.gz'
+tar -xzf sslearn_*_darwin_arm64.tar.gz
 sudo mv sslearn /usr/local/bin/sslearn
 mkdir -p ~/.selfship/hooks
 mv sslearn-bridge ~/.selfship/hooks/sslearn-bridge
