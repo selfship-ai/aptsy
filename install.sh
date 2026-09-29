@@ -4,7 +4,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.sh | bash
 #
 # Optional:
-#   SSLEARN_VERSION=v0.1.0   pin a release instead of the latest
+#   APTSY_VERSION=v0.1.0   pin a release instead of the latest
 #   --non-interactive        no questions: install to a writable bin dir,
 #                            configure every discovered tool, do not start
 #   --uninstall              remove Aptsy from this machine
@@ -14,8 +14,8 @@ set -euo pipefail
 REPO="selfship-ai/aptsy"
 NON_INTERACTIVE=false
 UNINSTALL=false
-LOG="${HOME}/.selfship/learn/install.log"
-PIDFILE="${HOME}/.selfship/learn/sslearn.pid"
+LOG="${HOME}/.aptsy/install.log"
+PIDFILE="${HOME}/.aptsy/aptsy.pid"
 
 usage() {
   cat <<'EOF'
@@ -28,8 +28,8 @@ Usage: install.sh [--non-interactive] [--uninstall]
   --non-interactive   skip questions. Uses /usr/local/bin when writable,
                       otherwise ~/.local/bin. Configures every discovered
                       tool. Does not start the daemon.
-  --uninstall         remove the boot service, hooks, ~/.selfship, and
-                      the sslearn command. Does not download a release.
+  --uninstall         remove the boot service, hooks, ~/.aptsy, and
+                      the aptsy command. Does not download a release.
 EOF
 }
 
@@ -85,7 +85,7 @@ detect_target() {
     Darwin) OS="darwin" ;;
     Linux) OS="linux" ;;
     MINGW*|MSYS*|CYGWIN*)
-      die "Windows is not installed by this script. Download sslearn_*_windows_*.zip from https://github.com/selfship-ai/aptsy/releases"
+      die "Windows is not installed by this script. Download aptsy_*_windows_*.zip from https://github.com/selfship-ai/aptsy/releases"
       ;;
     *) die "unsupported operating system: ${kernel}" ;;
   esac
@@ -103,7 +103,7 @@ public_latest_tag() {
   local body tag
   body="$(curl -fsSL --retry 2 --max-time 20 \
     -H "Accept: application/vnd.github+json" \
-    -H "User-Agent: sslearn-install" \
+    -H "User-Agent: aptsy-install" \
     "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null)" || return 1
   tag="$(printf '%s\n' "$body" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
   [[ -n "$tag" ]] || return 1
@@ -126,8 +126,8 @@ have_auth() {
 }
 
 resolve_release() {
-  if [[ -n "${SSLEARN_VERSION:-}" ]]; then
-    TAG="$SSLEARN_VERSION"
+  if [[ -n "${APTSY_VERSION:-}" ]]; then
+    TAG="$APTSY_VERSION"
     [[ "$TAG" == v* ]] || TAG="v${TAG}"
   elif TAG="$(public_latest_tag)"; then
     :
@@ -138,7 +138,7 @@ resolve_release() {
       TAG="$(curl -fsSL \
         -H "Authorization: Bearer ${GITHUB_TOKEN}" \
         -H "Accept: application/vnd.github+json" \
-        -H "User-Agent: sslearn-install" \
+        -H "User-Agent: aptsy-install" \
         "https://api.github.com/repos/${REPO}/releases/latest" \
         | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')"
     fi
@@ -147,7 +147,7 @@ resolve_release() {
   fi
   [[ -n "$TAG" ]] || die "could not determine the release tag"
   VERSION="${TAG#v}"
-  ASSET="sslearn_${VERSION}_${OS}_${ARCH}.tar.gz"
+  ASSET="aptsy_${VERSION}_${OS}_${ARCH}.tar.gz"
   info "Release ${TAG} (${ASSET})."
 }
 
@@ -198,11 +198,11 @@ download_authenticated() {
   curl_download --progress "$asset_url" "$WORK/$ASSET" 0 \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
     -H "Accept: application/octet-stream" \
-    -H "User-Agent: sslearn-install"
+    -H "User-Agent: aptsy-install"
   curl_download "$sums_url" "$WORK/checksums.txt" 0 \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
     -H "Accept: application/octet-stream" \
-    -H "User-Agent: sslearn-install"
+    -H "User-Agent: aptsy-install"
 }
 
 download_release() {
@@ -220,9 +220,9 @@ download_release() {
   [[ -f "$WORK/checksums.txt" ]] || die "download did not produce checksums.txt"
   verify_checksum "$WORK/$ASSET" "$WORK/checksums.txt"
   tar -xzf "$WORK/$ASSET" -C "$WORK"
-  [[ -f "$WORK/sslearn" ]] || die "archive has no sslearn binary"
-  [[ -f "$WORK/sslearn-bridge" ]] || die "archive has no sslearn-bridge binary"
-  chmod 755 "$WORK/sslearn" "$WORK/sslearn-bridge"
+  [[ -f "$WORK/aptsy" ]] || die "archive has no aptsy binary"
+  [[ -f "$WORK/aptsy-bridge" ]] || die "archive has no aptsy-bridge binary"
+  chmod 755 "$WORK/aptsy" "$WORK/aptsy-bridge"
 }
 
 release_asset_url() {
@@ -230,7 +230,7 @@ release_asset_url() {
   curl -fsSL \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
     -H "Accept: application/vnd.github+json" \
-    -H "User-Agent: sslearn-install" \
+    -H "User-Agent: aptsy-install" \
     "https://api.github.com/repos/${REPO}/releases/tags/${TAG}" \
     | python3 -c 'import json,sys; name=sys.argv[1]; rel=json.load(sys.stdin)
 for asset in rel.get("assets", []):
@@ -262,11 +262,11 @@ choose_bindir() {
     else
       BINDIR="$user_dir"
     fi
-    info "Installing the sslearn command to ${BINDIR}."
+    info "Installing the aptsy command to ${BINDIR}."
     return
   fi
   info ""
-  info "Where should the sslearn command be installed?"
+  info "Where should the aptsy command be installed?"
   info "  [1] ${system_dir}  (default; uses sudo when that directory is not writable)"
   info "  [2] ${user_dir}  (also adds it to your shell startup file)"
   choice="$(tty_read "Choice [1]: ")"
@@ -300,7 +300,7 @@ append_shell_path() {
     return 0
   fi
   mkdir -p "$(dirname "$rc")"
-  printf '\n# sslearn command\n%s\n' "$line" >>"$rc" || die "cannot update PATH in ${rc}"
+  printf '\n# aptsy command\n%s\n' "$line" >>"$rc" || die "cannot update PATH in ${rc}"
   info "Added ~/.local/bin to PATH in ${rc}."
 }
 
@@ -328,7 +328,7 @@ wire_shell_path() {
   case ":${PATH}:" in
     *":${BINDIR}:"*) ;;
     *)
-      info "Open a new terminal before typing sslearn. This installer cannot change the shell that launched it."
+      info "Open a new terminal before typing aptsy. This installer cannot change the shell that launched it."
       ;;
   esac
 }
@@ -355,7 +355,7 @@ listener_pid() {
 daemon_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:8787/health"; }
 
 run_init() {
-  local config="${HOME}/.selfship/learn/config.yml" answer
+  local config="${HOME}/.aptsy/config.yml" answer
   info ""
   if [[ -f "$config" ]]; then
     if [[ "$NON_INTERACTIVE" == true ]] || ! has_terminal; then
@@ -369,46 +369,46 @@ run_init() {
     esac
   fi
   info "Configuring hooks and ${config}."
-  info "sslearn will list the coding tools it found on this machine."
+  info "aptsy will list the coding tools it found on this machine."
   # Close or replace stdin. Under curl | bash it is the script itself.
   if has_terminal && [[ "$NON_INTERACTIVE" != true ]]; then
-    "$SSLEARN" init </dev/tty
+    "$APTSY" init </dev/tty
   else
     info "Configuring every discovered tool."
-    printf 'Y\n' | "$SSLEARN" init
+    printf 'Y\n' | "$APTSY" init
   fi
 }
 
 start_daemon() {
-  # sslearn start registers the boot service and returns. sudo may prompt.
+  # aptsy start registers the boot service and returns. sudo may prompt.
   if has_terminal; then
-    "$SSLEARN" start </dev/tty
+    "$APTSY" start </dev/tty
   else
-    "$SSLEARN" start </dev/null
+    "$APTSY" start </dev/null
   fi
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
     if daemon_up; then
-      info "Stop it with: sslearn stop"
+      info "Stop it with: aptsy stop"
       return 0
     fi
     sleep 0.5
   done
-  die "sslearn did not become healthy."
+  die "aptsy did not become healthy."
 }
 
 stop_daemon() {
   if has_terminal; then
-    "$SSLEARN" stop </dev/tty
+    "$APTSY" stop </dev/tty
   else
-    "$SSLEARN" stop </dev/null
+    "$APTSY" stop </dev/null
   fi
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
     daemon_up || return 0
     sleep 0.5
   done
-  die "sslearn is still listening on 127.0.0.1:8787"
+  die "aptsy is still listening on 127.0.0.1:8787"
 }
 
 maybe_start() {
@@ -417,9 +417,9 @@ maybe_start() {
     was_running=true
   fi
   if [[ "$was_running" == true ]]; then
-    info "sslearn is already running. The new binary is used after a restart."
+    info "aptsy is already running. The new binary is used after a restart."
     if [[ "$NON_INTERACTIVE" == true ]] || ! has_terminal; then
-      info "Stop the current process and run '${SSLEARN} start'."
+      info "Stop the current process and run '${APTSY} start'."
       return 0
     fi
     answer="$(tty_read "Restart it with the new binary? [Y/n]: ")"
@@ -431,28 +431,28 @@ maybe_start() {
     return 0
   fi
   if [[ "$NON_INTERACTIVE" == true ]] || ! has_terminal; then
-    info "Run '${SSLEARN} start' when you want the daemon."
+    info "Run '${APTSY} start' when you want the daemon."
     return 0
   fi
   info ""
-  answer="$(tty_read "Start sslearn in the background? [Y/n]: ")"
+  answer="$(tty_read "Start aptsy in the background? [Y/n]: ")"
   case "${answer:-Y}" in
-    n|N) info "Run '${SSLEARN} start' when you want the daemon. It runs in the background and starts again at boot. Stop it with 'sslearn stop'." ;;
+    n|N) info "Run '${APTSY} start' when you want the daemon. It runs in the background and starts again at boot. Stop it with 'aptsy stop'." ;;
     y|Y|"") start_daemon ;;
     *) die "unknown choice: ${answer}" ;;
   esac
 }
 
-find_sslearn() {
+find_aptsy() {
   local candidate
-  for candidate in /usr/local/bin/sslearn "${HOME}/.local/bin/sslearn"; do
+  for candidate in /usr/local/bin/aptsy "${HOME}/.local/bin/aptsy"; do
     if [[ -x "$candidate" ]]; then
       printf '%s' "$candidate"
       return 0
     fi
   done
-  if command -v sslearn >/dev/null 2>&1; then
-    command -v sslearn
+  if command -v aptsy >/dev/null 2>&1; then
+    command -v aptsy
     return 0
   fi
   return 1
@@ -461,10 +461,10 @@ find_sslearn() {
 strip_shell_path() {
   local rc="$1" tmp
   [[ -f "$rc" ]] || return 0
-  grep -q '^[[:space:]]*# sslearn command[[:space:]]*$' "$rc" || return 0
+  grep -q '^[[:space:]]*# aptsy command[[:space:]]*$' "$rc" || return 0
   tmp="$(mktemp)"
   awk '
-    $0 ~ /^[[:space:]]*# sslearn command[[:space:]]*$/ { skip = 1; next }
+    $0 ~ /^[[:space:]]*# aptsy command[[:space:]]*$/ { skip = 1; next }
     skip { skip = 0; next }
     { print }
   ' "$rc" >"$tmp"
@@ -476,36 +476,36 @@ strip_shell_path() {
 }
 
 uninstall_without_cli() {
-  printf '%s\n' "Removing the boot service, the sslearn command, and ~/.selfship."
-  printf '%s\n' "Hook entries in other tools are removed when sslearn uninstall is available."
+  printf '%s\n' "Removing the boot service, the aptsy command, and ~/.aptsy."
+  printf '%s\n' "Hook entries in other tools are removed when aptsy uninstall is available."
   case "$(uname -s)" in
     Darwin)
-      if [[ -f /Library/LaunchDaemons/ai.selfship.sslearn.plist ]]; then
-        sudo launchctl bootout system/ai.selfship.sslearn || true
-        sudo rm -f /Library/LaunchDaemons/ai.selfship.sslearn.plist
+      if [[ -f /Library/LaunchDaemons/ai.aptsy.daemon.plist ]]; then
+        sudo launchctl bootout system/ai.aptsy.daemon || true
+        sudo rm -f /Library/LaunchDaemons/ai.aptsy.daemon.plist
       fi
-      rm -f "${HOME}/Library/Logs/sslearn.log"
+      rm -f "${HOME}/Library/Logs/aptsy.log"
       ;;
     Linux)
-      if [[ -f /etc/systemd/system/sslearn.service || -d /var/log/sslearn ]]; then
-        sudo systemctl disable --now sslearn || true
-        sudo rm -f /etc/systemd/system/sslearn.service
+      if [[ -f /etc/systemd/system/aptsy.service || -d /var/log/aptsy ]]; then
+        sudo systemctl disable --now aptsy || true
+        sudo rm -f /etc/systemd/system/aptsy.service
         sudo systemctl daemon-reload || true
-        sudo rm -rf /var/log/sslearn
+        sudo rm -rf /var/log/aptsy
       fi
-      if [[ -f "${HOME}/.config/systemd/user/sslearn.service" ]]; then
-        systemctl --user disable --now sslearn || true
-        rm -f "${HOME}/.config/systemd/user/sslearn.service"
+      if [[ -f "${HOME}/.config/systemd/user/aptsy.service" ]]; then
+        systemctl --user disable --now aptsy || true
+        rm -f "${HOME}/.config/systemd/user/aptsy.service"
         systemctl --user daemon-reload || true
       fi
-      rm -rf "${HOME}/.local/state/sslearn"
+      rm -rf "${HOME}/.local/state/aptsy"
       ;;
   esac
-  rm -f "${HOME}/.local/bin/sslearn"
-  if [[ -f /usr/local/bin/sslearn ]]; then
-    sudo rm -f /usr/local/bin/sslearn
+  rm -f "${HOME}/.local/bin/aptsy"
+  if [[ -f /usr/local/bin/aptsy ]]; then
+    sudo rm -f /usr/local/bin/aptsy
   fi
-  rm -rf "${HOME}/.selfship"
+  rm -rf "${HOME}/.aptsy"
   strip_shell_path "${HOME}/.zshrc"
   strip_shell_path "${HOME}/.zprofile"
   strip_shell_path "${HOME}/.bashrc"
@@ -517,7 +517,7 @@ uninstall_without_cli() {
 
 run_uninstall() {
   local bin="" status=0
-  if ! bin="$(find_sslearn)"; then
+  if ! bin="$(find_aptsy)"; then
     uninstall_without_cli
     return
   fi
@@ -531,7 +531,7 @@ run_uninstall() {
   fi
   # Older releases do not have this command. They exit 2 for an unknown command.
   if [[ "$status" -eq 2 ]]; then
-    printf '%s\n' "This copy of sslearn has no uninstall command. Removing the files it left behind."
+    printf '%s\n' "This copy of aptsy has no uninstall command. Removing the files it left behind."
     uninstall_without_cli
     return
   fi
@@ -544,19 +544,19 @@ main() {
     run_uninstall
     return
   fi
-  mkdir -p "${HOME}/.selfship/learn"
+  mkdir -p "${HOME}/.aptsy"
   touch "$LOG"
   detect_target
   resolve_release
   download_release
   choose_bindir
-  install_file "$WORK/sslearn" "$BINDIR" sslearn
-  install_file "$WORK/sslearn-bridge" "${HOME}/.selfship/hooks" sslearn-bridge
-  SSLEARN="${BINDIR}/sslearn"
-  info "Installed ${SSLEARN}"
-  info "Installed ${HOME}/.selfship/hooks/sslearn-bridge"
+  install_file "$WORK/aptsy" "$BINDIR" aptsy
+  install_file "$WORK/aptsy-bridge" "${HOME}/.aptsy/hooks" aptsy-bridge
+  APTSY="${BINDIR}/aptsy"
+  info "Installed ${APTSY}"
+  info "Installed ${HOME}/.aptsy/hooks/aptsy-bridge"
   wire_shell_path
-  "$SSLEARN" version </dev/null || true
+  "$APTSY" version </dev/null || true
   run_init
   maybe_start
   info "Done. Install log: ${LOG}"
