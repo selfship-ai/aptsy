@@ -343,7 +343,10 @@ listener_pid() {
     fi
   fi
   if command -v lsof >/dev/null 2>&1; then
-    pid="$(lsof -nP -iTCP:8787 -sTCP:LISTEN -t 2>/dev/null | awk 'NR==1 { print; exit }')"
+    pid="$(lsof -nP -iTCP:45117 -sTCP:LISTEN -t 2>/dev/null | awk 'NR==1 { print; exit }')"
+    if [[ -z "$pid" ]]; then
+      pid="$(lsof -nP -iTCP:8787 -sTCP:LISTEN -t 2>/dev/null | awk 'NR==1 { print; exit }')"
+    fi
     if [[ -n "$pid" ]]; then
       printf '%s' "$pid"
       return 0
@@ -352,8 +355,9 @@ listener_pid() {
   return 1
 }
 
-web_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:8787/health"; }
-mcp_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:8788/health"; }
+web_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:45117/health"; }
+mcp_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:45118/health"; }
+legacy_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:8787/health"; }
 
 run_init() {
   local config="${HOME}/.aptsy/config.yml" answer
@@ -395,7 +399,7 @@ start_daemon() {
     fi
     sleep 0.5
   done
-  die "aptsy did not become healthy on 127.0.0.1:8787 and 127.0.0.1:8788."
+  die "aptsy did not become healthy on 127.0.0.1:45117 and 127.0.0.1:45118."
 }
 
 stop_daemon() {
@@ -406,15 +410,17 @@ stop_daemon() {
   fi
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    web_up || return 0
+    if ! web_up && ! legacy_up; then
+      return 0
+    fi
     sleep 0.5
   done
-  die "aptsy is still listening on 127.0.0.1:8787"
+  die "aptsy is still listening"
 }
 
 maybe_start() {
   local answer was_running=false
-  if web_up; then
+  if web_up || legacy_up; then
     was_running=true
   fi
   if [[ "$was_running" == true ]]; then

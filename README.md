@@ -60,7 +60,7 @@ aptsy learn status
 | Linux: `/var/log/aptsy/aptsy.log` | Log file |
 | `~/.aptsy/hooks/aptsy-bridge` | Helper the agent hooks run |
 
-Aptsy listens on `127.0.0.1:8787` for hooks and `127.0.0.1:8788/mcp` for MCP. MCP entries are written only after that server is listening, either at the end of `aptsy init` or by `aptsy start` if init ran first.
+Aptsy listens on `127.0.0.1:45117` for hooks and `127.0.0.1:45118/mcp` for MCP. MCP entries are written only after that server is listening, either at the end of `aptsy init` or by `aptsy start` if init ran first.
 
 Set `APTSY_TOKEN` if you want that secret required on both local ports. Leave it unset when only you can reach this machine.
 
