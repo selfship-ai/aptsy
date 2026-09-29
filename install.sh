@@ -348,32 +348,35 @@ run_init() {
 }
 
 start_daemon() {
-  local log="${HOME}/.selfship/learn/sslearn.log"
-  mkdir -p "${HOME}/.selfship/learn"
-  # stdin must not be the installer script.
-  nohup "$SSLEARN" start </dev/null >>"$log" 2>&1 &
-  echo $! >"$PIDFILE"
-  sleep 1
-  if daemon_up; then
-    info "Started pid $(cat "$PIDFILE"). Log: ${log}"
-    info "Stop with: sslearn stop"
+  # sslearn start registers the boot service and returns. sudo may prompt.
+  if has_terminal; then
+    "$SSLEARN" start </dev/tty
   else
-    die "sslearn did not become healthy. See ${log}"
+    "$SSLEARN" start </dev/null
   fi
+  local i
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    if daemon_up; then
+      info "Stop it with: sslearn stop"
+      return 0
+    fi
+    sleep 0.5
+  done
+  die "sslearn did not become healthy."
 }
 
 stop_daemon() {
-  local pid
-  if pid="$(listener_pid)"; then
-    kill "$pid" || die "could not stop pid ${pid}"
-    local i
-    for i in 1 2 3 4 5; do
-      daemon_up || return 0
-      sleep 1
-    done
-    die "sslearn pid ${pid} is still listening on 127.0.0.1:8787"
+  if has_terminal; then
+    "$SSLEARN" stop </dev/tty
+  else
+    "$SSLEARN" stop </dev/null
   fi
-  die "sslearn is listening on 127.0.0.1:8787 but its pid was not found. Stop it, then rerun."
+  local i
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    daemon_up || return 0
+    sleep 0.5
+  done
+  die "sslearn is still listening on 127.0.0.1:8787"
 }
 
 maybe_start() {
@@ -402,7 +405,7 @@ maybe_start() {
   info ""
   answer="$(tty_read "Start sslearn in the background? [Y/n]: ")"
   case "${answer:-Y}" in
-    n|N) info "Run '${SSLEARN} start' when you want the daemon. Stop a background daemon with 'sslearn stop', or press Ctrl+C if it is in this terminal." ;;
+    n|N) info "Run '${SSLEARN} start' when you want the daemon. It runs in the background and starts again at boot. Stop it with 'sslearn stop'." ;;
     y|Y|"") start_daemon ;;
     *) die "unknown choice: ${answer}" ;;
   esac

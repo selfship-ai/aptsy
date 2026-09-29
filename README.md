@@ -39,13 +39,13 @@ Change the archive name for your OS and CPU. The hook helper must be at `~/.self
 
 ```bash
 sslearn init      # find installed agents, write hooks, write config
-sslearn start     # run in the foreground
-sslearn stop      # stop a background daemon
+sslearn start     # run in the background, and start again at boot
+sslearn stop      # stop until the next boot or sslearn start
 sslearn status    # check that it is up
 sslearn version
 ```
 
-`sslearn start` keeps running until you press Ctrl+C, and records `~/.selfship/learn/sslearn.pid`. If the installer started it in the background, `sslearn stop` stops that process.
+`sslearn start` returns as soon as the daemon is up. It does not stay in the terminal. On Linux it installs a systemd service (`systemctl enable sslearn`) so Aptsy starts when the machine boots. On macOS it installs a launchd daemon that does the same. The first start asks for your password so it can register that service. There is no foreground mode.
 
 After init, use your coding agent as usual. Aptsy records the session and builds a local playbook from it.
 
@@ -69,8 +69,9 @@ sslearn learn status
 |------|------------|
 | `~/.selfship/learn/config.yml` | Config written by `sslearn init` |
 | `~/.selfship/learn/ingest_data/` | Local database |
-| `~/.selfship/learn/sslearn.pid` | Process id of a background daemon |
-| `~/.selfship/learn/sslearn.log` | Log when the installer starts it in the background |
+| `~/.selfship/learn/sslearn.pid` | Process id of the daemon |
+| macOS: `~/Library/Logs/sslearn.log` | Log file |
+| Linux: `/var/log/sslearn/sslearn.log` | Log file |
 | `~/.selfship/hooks/sslearn-bridge` | Helper the agent hooks run |
 
 Aptsy listens on `127.0.0.1:8787` for hooks and `127.0.0.1:8788/mcp` for MCP. `sslearn init` writes the MCP entry for each tool it finds. To add it yourself:
@@ -104,9 +105,28 @@ Remove the Aptsy entries from:
 - `~/.agents/plugins/selfship/`
 - `~/.openhands/hooks.json`
 
-Then remove the command and the data directory:
+Stop the boot service, then remove the command and the data directory.
+
+Linux:
+
+```bash
+sudo systemctl disable --now sslearn
+sudo rm -f /etc/systemd/system/sslearn.service
+sudo systemctl daemon-reload
+```
+
+macOS:
+
+```bash
+sudo launchctl bootout system/ai.selfship.sslearn
+sudo rm -f /Library/LaunchDaemons/ai.selfship.sslearn.plist
+```
+
+Then:
 
 ```bash
 rm -f /usr/local/bin/sslearn ~/.local/bin/sslearn
+rm -f ~/Library/Logs/sslearn.log
+sudo rm -rf /var/log/sslearn
 rm -rf ~/.selfship
 ```
