@@ -7,17 +7,19 @@
 #   SSLEARN_VERSION=v0.1.0   pin a release instead of the latest
 #   --non-interactive        no questions: install to a writable bin dir,
 #                            configure every discovered tool, do not start
+#   --uninstall              remove Aptsy from this machine
 
 set -euo pipefail
 
 REPO="selfship-ai/aptsy"
 NON_INTERACTIVE=false
+UNINSTALL=false
 LOG="${HOME}/.selfship/learn/install.log"
 PIDFILE="${HOME}/.selfship/learn/sslearn.pid"
 
 usage() {
   cat <<'EOF'
-Usage: install.sh [--non-interactive]
+Usage: install.sh [--non-interactive] [--uninstall]
 
   Detects macOS or Linux and amd64 or arm64, downloads the matching
   Aptsy release, installs the CLI and the hook bridge, then configures
@@ -26,22 +28,28 @@ Usage: install.sh [--non-interactive]
   --non-interactive   skip questions. Uses /usr/local/bin when writable,
                       otherwise ~/.local/bin. Configures every discovered
                       tool. Does not start the daemon.
+  --uninstall         remove the boot service, hooks, ~/.selfship, and
+                      the sslearn command. Does not download a release.
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --non-interactive) NON_INTERACTIVE=true; shift ;;
+    --uninstall) UNINSTALL=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) printf 'install: unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
 done
 
-mkdir -p "${HOME}/.selfship/learn"
-touch "$LOG"
-
 info() { printf '%s\n' "$*" | tee -a "$LOG" >&2; }
-die() { printf 'install: %s\n' "$*" | tee -a "$LOG" >&2; exit 1; }
+die() {
+  printf 'install: %s\n' "$*" >&2
+  if [[ -d "$(dirname "$LOG")" ]]; then
+    printf 'install: %s\n' "$*" >>"$LOG"
+  fi
+  exit 1
+}
 
 # Opening /dev/tty is the real test. The device node can exist in a container
 # and still fail with ENXIO. Under curl | bash, stdin is the script.
@@ -62,7 +70,7 @@ tty_read() {
 refuse_root() {
   local uid="${EUID:-$(id -u)}"
   if [[ "$uid" -eq 0 ]]; then
-    die "run this as your user, not root. It writes hooks and config under \$HOME. sudo is used only to copy sslearn into /usr/local/bin when you choose that directory."
+    die "run this as your user, not root. It writes hooks and config under \$HOME. sudo is used only to install or remove the command in /usr/local/bin and the boot service."
   fi
 }
 
@@ -411,8 +419,109 @@ maybe_start() {
   esac
 }
 
+find_sslearn() {
+  local candidate
+  for candidate in /usr/local/bin/sslearn "${HOME}/.local/bin/sslearn"; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+  if command -v sslearn >/dev/null 2>&1; then
+    command -v sslearn
+    return 0
+  fi
+  return 1
+}
+
+strip_shell_path() {
+  local rc="$1" tmp
+  [[ -f "$rc" ]] || return 0
+  grep -q '^[[:space:]]*# sslearn command[[:space:]]*$' "$rc" || return 0
+  tmp="$(mktemp)"
+  awk '
+    $0 ~ /^[[:space:]]*# sslearn command[[:space:]]*$/ { skip = 1; next }
+    skip { skip = 0; next }
+    { print }
+  ' "$rc" >"$tmp"
+  if ! cmp -s "$rc" "$tmp"; then
+    mv "$tmp" "$rc"
+  else
+    rm -f "$tmp"
+  fi
+}
+
+uninstall_without_cli() {
+  printf '%s\n' "Removing the boot service, the sslearn command, and ~/.selfship."
+  printf '%s\n' "Hook entries in other tools are removed when sslearn uninstall is available."
+  case "$(uname -s)" in
+    Darwin)
+      if [[ -f /Library/LaunchDaemons/ai.selfship.sslearn.plist ]]; then
+        sudo launchctl bootout system/ai.selfship.sslearn || true
+        sudo rm -f /Library/LaunchDaemons/ai.selfship.sslearn.plist
+      fi
+      rm -f "${HOME}/Library/Logs/sslearn.log"
+      ;;
+    Linux)
+      if [[ -f /etc/systemd/system/sslearn.service || -d /var/log/sslearn ]]; then
+        sudo systemctl disable --now sslearn || true
+        sudo rm -f /etc/systemd/system/sslearn.service
+        sudo systemctl daemon-reload || true
+        sudo rm -rf /var/log/sslearn
+      fi
+      if [[ -f "${HOME}/.config/systemd/user/sslearn.service" ]]; then
+        systemctl --user disable --now sslearn || true
+        rm -f "${HOME}/.config/systemd/user/sslearn.service"
+        systemctl --user daemon-reload || true
+      fi
+      rm -rf "${HOME}/.local/state/sslearn"
+      ;;
+  esac
+  rm -f "${HOME}/.local/bin/sslearn"
+  if [[ -f /usr/local/bin/sslearn ]]; then
+    sudo rm -f /usr/local/bin/sslearn
+  fi
+  rm -rf "${HOME}/.selfship"
+  strip_shell_path "${HOME}/.zshrc"
+  strip_shell_path "${HOME}/.zprofile"
+  strip_shell_path "${HOME}/.bashrc"
+  strip_shell_path "${HOME}/.profile"
+  strip_shell_path "${HOME}/.bash_profile"
+  strip_shell_path "${HOME}/.config/fish/config.fish"
+  printf '%s\n' "Aptsy has been uninstalled."
+}
+
+run_uninstall() {
+  local bin="" status=0
+  if ! bin="$(find_sslearn)"; then
+    uninstall_without_cli
+    return
+  fi
+  if has_terminal; then
+    "$bin" uninstall --yes </dev/tty || status=$?
+  else
+    "$bin" uninstall --yes </dev/null || status=$?
+  fi
+  if [[ "$status" -eq 0 ]]; then
+    return
+  fi
+  # Older releases do not have this command. They exit 2 for an unknown command.
+  if [[ "$status" -eq 2 ]]; then
+    printf '%s\n' "This copy of sslearn has no uninstall command. Removing the files it left behind."
+    uninstall_without_cli
+    return
+  fi
+  exit "$status"
+}
+
 main() {
   refuse_root
+  if [[ "$UNINSTALL" == true ]]; then
+    run_uninstall
+    return
+  fi
+  mkdir -p "${HOME}/.selfship/learn"
+  touch "$LOG"
   detect_target
   resolve_release
   download_release

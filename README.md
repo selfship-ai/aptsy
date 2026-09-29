@@ -16,24 +16,9 @@ The script picks the matching release, installs `sslearn` and the hook helper, t
 
 - Pin a version with `SSLEARN_VERSION=v0.1.0`.
 - Add `--non-interactive` to skip the questions. That installs into `/usr/local/bin` when you can write there, otherwise `~/.local/bin`, configures every tool it finds, and does not start the daemon.
-- Run it as yourself. It writes config in your home directory and asks for sudo only when copying `sslearn` into `/usr/local/bin`.
+- Run it as yourself. It writes config in your home directory and asks for sudo only when copying `sslearn` into `/usr/local/bin` or registering the boot service.
 
-On Windows, download `sslearn_*_windows_*.zip` from the [releases](https://github.com/selfship-ai/aptsy/releases) page, then run `sslearn init`.
-
-To install one archive by hand:
-
-```bash
-gh release download --repo selfship-ai/aptsy --pattern 'sslearn_*_darwin_arm64.tar.gz'
-tar -xzf sslearn_*_darwin_arm64.tar.gz
-sudo mv sslearn /usr/local/bin/sslearn
-mkdir -p ~/.selfship/hooks
-mv sslearn-bridge ~/.selfship/hooks/sslearn-bridge
-chmod +x ~/.selfship/hooks/sslearn-bridge
-sslearn init
-sslearn start
-```
-
-Change the archive name for your OS and CPU. The hook helper must be at `~/.selfship/hooks/sslearn-bridge`.
+On Windows, use the zip from the [releases](https://github.com/selfship-ai/aptsy/releases) page.
 
 ## Use
 
@@ -41,11 +26,12 @@ Change the archive name for your OS and CPU. The hook helper must be at `~/.self
 sslearn init      # find installed agents, write hooks, write config
 sslearn start     # run in the background, and start again at boot
 sslearn stop      # stop until the next boot or sslearn start
+sslearn uninstall # remove Aptsy from this machine
 sslearn status    # check that it is up
 sslearn version
 ```
 
-`sslearn start` returns as soon as the daemon is up. It does not stay in the terminal. On Linux it installs a systemd service (`systemctl enable sslearn`) so Aptsy starts when the machine boots. On macOS it installs a launchd daemon that does the same. The first start asks for your password so it can register that service. There is no foreground mode.
+`sslearn start` returns as soon as the daemon is up. It does not stay in the terminal. On Linux it installs a systemd service so Aptsy starts when the machine boots. On macOS it installs a launchd daemon that does the same. The first start asks for your password so it can register that service. There is no foreground mode.
 
 After init, use your coding agent as usual. Aptsy records the session and builds a local playbook from it.
 
@@ -74,17 +60,7 @@ sslearn learn status
 | Linux: `/var/log/sslearn/sslearn.log` | Log file |
 | `~/.selfship/hooks/sslearn-bridge` | Helper the agent hooks run |
 
-Aptsy listens on `127.0.0.1:8787` for hooks and `127.0.0.1:8788/mcp` for MCP. `sslearn init` writes the MCP entry for each tool it finds. To add it yourself:
-
-```json
-{
-  "mcpServers": {
-    "sslearn": {
-      "url": "http://127.0.0.1:8788/mcp"
-    }
-  }
-}
-```
+Aptsy listens on `127.0.0.1:8787` for hooks and `127.0.0.1:8788/mcp` for MCP. `sslearn init` writes the MCP entry for each tool it finds.
 
 Set `SELFSHIP_TOKEN` if you want that secret required on both local ports. Leave it unset when only you can reach this machine.
 
@@ -96,37 +72,14 @@ Run the install command again. It replaces `sslearn` and `sslearn-bridge` and le
 
 ## Uninstall
 
-Remove the Aptsy entries from:
-
-- `~/.claude/settings.json` and `~/.claude.json`
-- `~/.cursor/hooks.json` and `~/.cursor/mcp.json`
-- `~/.codex/hooks.json` and `~/.codex/config.toml`
-- `~/.hermes/config.yaml`
-- `~/.agents/plugins/selfship/`
-- `~/.openhands/hooks.json`
-
-Stop the boot service, then remove the command and the data directory.
-
-Linux:
-
 ```bash
-sudo systemctl disable --now sslearn
-sudo rm -f /etc/systemd/system/sslearn.service
-sudo systemctl daemon-reload
+curl -fsSL https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.sh | bash -s -- --uninstall
 ```
 
-macOS:
+If `sslearn` is already on your PATH:
 
 ```bash
-sudo launchctl bootout system/ai.selfship.sslearn
-sudo rm -f /Library/LaunchDaemons/ai.selfship.sslearn.plist
+sslearn uninstall
 ```
 
-Then:
-
-```bash
-rm -f /usr/local/bin/sslearn ~/.local/bin/sslearn
-rm -f ~/Library/Logs/sslearn.log
-sudo rm -rf /var/log/sslearn
-rm -rf ~/.selfship
-```
+That stops the boot service, removes the hook and MCP entries Aptsy added, and deletes `~/.selfship`, the log file, and the `sslearn` command. `sslearn uninstall` asks before it deletes anything. The install-script command does not ask again.
