@@ -151,11 +151,37 @@ resolve_release() {
   info "Release ${TAG} (${ASSET})."
 }
 
+# curl_download [--progress] URL DEST TIMEOUT [curl args...]
+# --progress draws a bar on a terminal. TIMEOUT 0 means no limit.
+# Extra arguments are curl flags, such as request headers.
+curl_download() {
+  local progress=false
+  if [[ "${1:-}" == "--progress" ]]; then
+    progress=true
+    shift
+  fi
+  local url="$1" dest="$2" timeout="$3"
+  shift 3
+  local -a limit=()
+  if [[ "$timeout" != "0" ]]; then
+    limit=(--max-time "$timeout")
+  fi
+  if [[ "$progress" == true && -t 2 ]]; then
+    info "Downloading $(basename "$dest")"
+    if ! curl -fL --retry 3 "${limit[@]}" --progress-bar "$@" -o "$dest" "$url"; then
+      printf 'download failed: %s\n' "$(basename "$dest")" >>"$LOG"
+      return 1
+    fi
+    return 0
+  fi
+  curl -fL --retry 3 "${limit[@]}" -sS "$@" -o "$dest" "$url" 2>>"$LOG"
+}
+
 download_public() {
   local base="https://github.com/${REPO}/releases/download/${TAG}"
   rm -f "$WORK/$ASSET" "$WORK/checksums.txt"
-  curl -fL --retry 3 --max-time 180 -o "$WORK/$ASSET" "${base}/${ASSET}" 2>>"$LOG" && \
-    curl -fL --retry 3 --max-time 60 -o "$WORK/checksums.txt" "${base}/checksums.txt" 2>>"$LOG"
+  curl_download --progress "${base}/${ASSET}" "$WORK/$ASSET" 180 && \
+    curl_download "${base}/checksums.txt" "$WORK/checksums.txt" 60
 }
 
 download_authenticated() {
@@ -169,16 +195,14 @@ download_authenticated() {
   asset_url="$(release_asset_url "$ASSET")"
   sums_url="$(release_asset_url checksums.txt)"
   # curl drops Authorization when the GitHub API redirects to the storage host.
-  curl -fL --retry 3 \
+  curl_download --progress "$asset_url" "$WORK/$ASSET" 0 \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
     -H "Accept: application/octet-stream" \
-    -H "User-Agent: sslearn-install" \
-    -o "$WORK/$ASSET" "$asset_url"
-  curl -fL --retry 3 \
+    -H "User-Agent: sslearn-install"
+  curl_download "$sums_url" "$WORK/checksums.txt" 0 \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
     -H "Accept: application/octet-stream" \
-    -H "User-Agent: sslearn-install" \
-    -o "$WORK/checksums.txt" "$sums_url"
+    -H "User-Agent: sslearn-install"
 }
 
 download_release() {
