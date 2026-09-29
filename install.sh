@@ -481,7 +481,9 @@ uninstall_without_cli() {
   case "$(uname -s)" in
     Darwin)
       if [[ -f /Library/LaunchDaemons/ai.aptsy.daemon.plist ]]; then
-        sudo launchctl bootout system/ai.aptsy.daemon || true
+        if launchctl print system/ai.aptsy.daemon >/dev/null 2>&1; then
+          sudo launchctl bootout system/ai.aptsy.daemon || true
+        fi
         sudo rm -f /Library/LaunchDaemons/ai.aptsy.daemon.plist
       fi
       rm -f "${HOME}/Library/Logs/aptsy.log"
