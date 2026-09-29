@@ -1,6 +1,10 @@
 # Aptsy
 
-Aptsy learns how you work with coding agents and keeps that on your machine. It reads chats from Claude Code, Cursor, Codex, Hermes, Goose, and OpenHands, and can hand relevant notes back to the agent.
+Aptsy makes everyday work with coding agents sharper. Bring the agent you already use — Claude Code, Cursor, Codex, Hermes, Goose, or OpenHands.
+
+- Surfaces the blind spots you and your agents miss
+- Learns from how your teammates work (enterprise only)
+- Use with cloud agents (enterprise only)
 
 The command is `aptsy`. Your chats and notes stay under `~/.aptsy`.
 
