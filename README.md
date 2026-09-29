@@ -36,7 +36,7 @@ aptsy version
 
 `aptsy start` returns as soon as the daemon is up. It does not stay in the terminal. On Linux it installs a systemd service so Aptsy starts when the machine boots. On macOS it installs a launchd daemon that does the same. The first start asks for your password so it can register that service. There is no foreground mode.
 
-After init, use your coding agent as usual. Aptsy records the session and builds a local playbook from it.
+After init, use your coding agent as usual. Aptsy records each session locally. Browse them at `http://127.0.0.1:45117`.
 
 To re-read chats that were captured by an older version:
 
@@ -44,19 +44,13 @@ To re-read chats that were captured by an older version:
 aptsy sync --rebuild
 ```
 
-That replaces Aptsy's copy of those chats with a fresh read from each tool. Lessons already in the playbook are kept. If a tool no longer has the chat, that copy is left as it is. Add `--tool claude_code` (or `cursor`, `codex`, `hermes`, `goose`, `openhands`) to limit the command to one tool.
-
-Check what has been learned:
-
-```bash
-aptsy learn status
-```
+That replaces Aptsy's copy of those chats with a fresh read from each tool. If a tool no longer has the chat, that copy is left as it is. Add `--tool claude_code` (or `cursor`, `codex`, `hermes`, `goose`, `openhands`) to limit the command to one tool.
 
 Aptsy listens on `127.0.0.1:45117` for hooks and `127.0.0.1:45118/mcp` for MCP. MCP entries are written only after that server is listening, either at the end of `aptsy init` or by `aptsy start` if init ran first.
 
 Set `APTSY_TOKEN` if you want that secret required on both local ports. Leave it unset when only you can reach this machine.
 
-Lessons use the agent runtime you choose during `aptsy init`, or later in the local UI at `http://127.0.0.1:45117/settings`. That choice is stored under `evaluation:` in `~/.aptsy/config.yml`. Ready runtimes are prompted through the Agent Client Protocol when their command speaks it, and the model you pick is applied after the session opens. Claude Code and Codex use their own commands when an ACP adapter is not installed. Otherwise you set an OpenAI-compatible base URL and model; the API key goes in `~/.aptsy/evaluation_api_key`, not in the yaml. Aptsy does not read `OPENAI_API_KEY`. Chats are still recorded when no runtime is chosen, and no lessons are written until one is.
+Aptsy's own model calls use the agent runtime you choose during `aptsy init`, or later in the local UI at `http://127.0.0.1:45117/settings`. That choice is stored under `evaluation:` in `~/.aptsy/config.yml`. Ready runtimes are prompted through the Agent Client Protocol when their command speaks it, and the model you pick is applied after the session opens. Claude Code and Codex use their own commands when an ACP adapter is not installed. Otherwise you set an OpenAI-compatible base URL and model; the API key goes in `~/.aptsy/evaluation_api_key`, not in the yaml. Aptsy does not read `OPENAI_API_KEY`. Chats are recorded whether or not a runtime is chosen.
 
 ## Upgrade
 
