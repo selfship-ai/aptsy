@@ -1,0 +1,3 @@
+# Releases should ship binaries only. git archive (GitHub's Source code links) stays empty.
+* export-ignore
+.gitattributes export-ignore
