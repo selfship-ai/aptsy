@@ -12,10 +12,10 @@ macOS and Linux (`amd64` or `arm64`):
 curl -fsSL https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.sh | bash
 ```
 
-The script picks the matching release, installs `aptsy` and the hook helper, then asks which tools to set up and whether to start.
+The script picks the matching release, installs `aptsy` and the hook helper, starts the daemon, then asks which tools to set up. MCP entries are written after the server is already listening.
 
 - Pin a version with `APTSY_VERSION=v0.1.0`.
-- Add `--non-interactive` to skip the questions. That installs into `/usr/local/bin` when you can write there, otherwise `~/.local/bin`, configures every tool it finds, and does not start the daemon.
+- Add `--non-interactive` to skip the questions. That installs into `/usr/local/bin` when you can write there, otherwise `~/.local/bin`, starts the daemon, then configures every tool it finds.
 - Run it as yourself. It writes config in your home directory and asks for sudo only when copying `aptsy` into `/usr/local/bin` or registering the boot service.
 
 On Windows, use the zip from the [releases](https://github.com/selfship-ai/aptsy/releases) page.
@@ -23,7 +23,7 @@ On Windows, use the zip from the [releases](https://github.com/selfship-ai/aptsy
 ## Use
 
 ```bash
-aptsy init      # find installed agents, write hooks, write config
+aptsy init      # find installed agents, write hooks and config; MCP entries wait until the server is up
 aptsy start     # run in the background, and start again at boot
 aptsy stop      # stop until the next boot or aptsy start
 aptsy uninstall # remove Aptsy from this machine
@@ -60,7 +60,7 @@ aptsy learn status
 | Linux: `/var/log/aptsy/aptsy.log` | Log file |
 | `~/.aptsy/hooks/aptsy-bridge` | Helper the agent hooks run |
 
-Aptsy listens on `127.0.0.1:8787` for hooks and `127.0.0.1:8788/mcp` for MCP. `aptsy init` writes the MCP entry for each tool it finds.
+Aptsy listens on `127.0.0.1:8787` for hooks and `127.0.0.1:8788/mcp` for MCP. MCP entries are written only after that server is listening, either at the end of `aptsy init` or by `aptsy start` if init ran first.
 
 Set `APTSY_TOKEN` if you want that secret required on both local ports. Leave it unset when only you can reach this machine.
 

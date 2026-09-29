@@ -6,7 +6,7 @@
 # Optional:
 #   APTSY_VERSION=v0.1.0   pin a release instead of the latest
 #   --non-interactive        no questions: install to a writable bin dir,
-#                            configure every discovered tool, do not start
+#                            start the daemon, then configure every tool
 #   --uninstall              remove Aptsy from this machine
 
 set -euo pipefail
@@ -26,8 +26,8 @@ Usage: install.sh [--non-interactive] [--uninstall]
   the coding tools found on this machine.
 
   --non-interactive   skip questions. Uses /usr/local/bin when writable,
-                      otherwise ~/.local/bin. Configures every discovered
-                      tool. Does not start the daemon.
+                      otherwise ~/.local/bin. Starts the daemon, then
+                      configures every discovered tool.
   --uninstall         remove the boot service, hooks, ~/.aptsy, and
                       the aptsy command. Does not download a release.
 EOF
@@ -352,7 +352,8 @@ listener_pid() {
   return 1
 }
 
-daemon_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:8787/health"; }
+web_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:8787/health"; }
+mcp_up() { curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:8788/health"; }
 
 run_init() {
   local config="${HOME}/.aptsy/config.yml" answer
@@ -388,13 +389,13 @@ start_daemon() {
   fi
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    if daemon_up; then
+    if web_up && mcp_up; then
       info "Stop it with: aptsy stop"
       return 0
     fi
     sleep 0.5
   done
-  die "aptsy did not become healthy."
+  die "aptsy did not become healthy on 127.0.0.1:8787 and 127.0.0.1:8788."
 }
 
 stop_daemon() {
@@ -405,7 +406,7 @@ stop_daemon() {
   fi
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    daemon_up || return 0
+    web_up || return 0
     sleep 0.5
   done
   die "aptsy is still listening on 127.0.0.1:8787"
@@ -413,7 +414,7 @@ stop_daemon() {
 
 maybe_start() {
   local answer was_running=false
-  if daemon_up; then
+  if web_up; then
     was_running=true
   fi
   if [[ "$was_running" == true ]]; then
@@ -431,13 +432,15 @@ maybe_start() {
     return 0
   fi
   if [[ "$NON_INTERACTIVE" == true ]] || ! has_terminal; then
-    info "Run '${APTSY} start' when you want the daemon."
+    info "Starting aptsy."
+    start_daemon
     return 0
   fi
   info ""
+  info "Aptsy starts before tool setup, so MCP clients connect to a server that is already running."
   answer="$(tty_read "Start aptsy in the background? [Y/n]: ")"
   case "${answer:-Y}" in
-    n|N) info "Run '${APTSY} start' when you want the daemon. It runs in the background and starts again at boot. Stop it with 'aptsy stop'." ;;
+    n|N) info "Run 'aptsy start' when you want the daemon. MCP entries are added then, after the server is up. Stop it with 'aptsy stop'." ;;
     y|Y|"") start_daemon ;;
     *) die "unknown choice: ${answer}" ;;
   esac
@@ -559,8 +562,8 @@ main() {
   info "Installed ${HOME}/.aptsy/hooks/aptsy-bridge"
   wire_shell_path
   "$APTSY" version </dev/null || true
-  run_init
   maybe_start
+  run_init
   info "Done. Install log: ${LOG}"
 }
 
