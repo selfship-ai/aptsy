@@ -64,7 +64,7 @@ Aptsy listens on `127.0.0.1:45117` for hooks and `127.0.0.1:45118/mcp` for MCP. 
 
 Set `APTSY_TOKEN` if you want that secret required on both local ports. Leave it unset when only you can reach this machine.
 
-Set `OPENAI_API_KEY` to let Aptsy write lessons with a model. `OPENAI_BASE_URL` and `OPENAI_CHAT_MODEL` override the endpoint and model. With no key, Aptsy still records chats.
+Lessons use the agent runtime you choose during `aptsy init`, or later in the local UI at `http://127.0.0.1:45117/settings`. That choice is stored under `evaluation:` in `~/.aptsy/config.yml`. Ready runtimes are prompted through the Agent Client Protocol when their command speaks it, and the model you pick is applied after the session opens. Claude Code and Codex use their own commands when an ACP adapter is not installed. Otherwise you set an OpenAI-compatible base URL and model; the API key goes in `~/.aptsy/evaluation_api_key`, not in the yaml. Aptsy does not read `OPENAI_API_KEY`. Chats are still recorded when no runtime is chosen, and no lessons are written until one is.
 
 ## Upgrade
 
