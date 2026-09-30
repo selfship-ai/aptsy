@@ -573,6 +573,30 @@ run_uninstall() {
   exit "$status"
 }
 
+# sign_in_if_needed opens the browser only when this machine has no usable
+# session. whoami is checked first so a release that does not yet understand
+# "login --if-needed" still keeps an existing account.
+sign_in_if_needed() {
+  local summary
+  summary="$("$APTSY" whoami 2>/dev/null || true)"
+  case "$summary" in
+    "account: signed out"*|*"unreadable or empty"*|"")
+      ;;
+    "account: "*)
+      info "$summary"
+      info "Already signed in. Leaving the existing account in place."
+      return 0
+      ;;
+    *)
+      ;;
+  esac
+  info "Sign in to your free Aptsy account. A browser will open."
+  if ! "$APTSY" login --if-needed </dev/tty; then
+    info "Sign-in did not finish. Create the account if you were asked to, then run: aptsy login && aptsy init && aptsy start"
+    return 1
+  fi
+}
+
 # Git Bash can run this file. PowerShell cannot. Hand off before any Unix install step.
 handoff_windows() {
   case "$(uname -s)" in
@@ -621,9 +645,7 @@ main() {
     info "This install cannot open a browser. Run: aptsy login && aptsy init && aptsy start"
     return 0
   fi
-  info "Sign in to your free Aptsy account. A browser will open."
-  if ! "$APTSY" login </dev/tty; then
-    info "Sign-in did not finish. Create the account if you were asked to, then run: aptsy login && aptsy init && aptsy start"
+  if ! sign_in_if_needed; then
     return 0
   fi
   maybe_start

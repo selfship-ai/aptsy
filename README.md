@@ -21,7 +21,7 @@ Windows (PowerShell):
 irm https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.ps1 | iex
 ```
 
-The script picks the matching release and installs `aptsy` and the hook helper. It then opens a browser so you can sign in to a free account at [aptsy.selfship.ai](https://aptsy.selfship.ai). After that it starts the daemon and asks which tools to set up. MCP entries are written after the server is already listening. If sign-in does not finish, run `aptsy login`, then `aptsy init` and `aptsy start`.
+The script picks the matching release and installs `aptsy` and the hook helper. It then signs in to a free account at [aptsy.selfship.ai](https://aptsy.selfship.ai). A browser opens only when this machine has no usable sign-in; an update keeps the existing one. After that it starts the daemon and asks which tools to set up. MCP entries are written after the server is already listening. If sign-in does not finish, run `aptsy login`, then `aptsy init` and `aptsy start`.
 
 - Pin a version with `APTSY_VERSION=v0.1.0` in the same command.
 - Skip the questions on macOS and Linux with `--non-interactive`. On Windows, set `APTSY_NONINTERACTIVE=1` before the PowerShell command. That installs into `/usr/local/bin` when you can write there, otherwise `~/.local/bin`. Windows always uses `%USERPROFILE%\.local\bin` and adds it to your user PATH. It then starts the daemon and configures every tool it finds.
@@ -58,7 +58,7 @@ Aptsy's own model calls use the agent runtime you choose during `aptsy init`, or
 
 ## Upgrade
 
-Run the install command again. It replaces `aptsy` and `aptsy-bridge` and leaves an existing config in place unless you ask it to set the hooks up again. Restart a daemon that was already running so it picks up the new binary.
+Run the install command again. It replaces `aptsy` and `aptsy-bridge`, keeps an existing sign-in, and leaves an existing config in place unless you ask it to set the hooks up again. Restart a daemon that was already running so it picks up the new binary.
 
 ## Uninstall
 
