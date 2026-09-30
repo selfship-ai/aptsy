@@ -297,6 +297,17 @@ try {
       Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
     }
 
+    if ($NonInteractive -or -not (Test-Prompt)) {
+      Write-Info 'This install cannot open a browser. Run: aptsy login; aptsy init; aptsy start'
+      return
+    }
+    Write-Info 'Sign in to your free Aptsy account. A browser will open.'
+    & $Aptsy login
+    if ($LASTEXITCODE -ne 0) {
+      Write-Info 'Sign-in did not finish. Create the account if you were asked to, then run: aptsy login; aptsy init; aptsy start'
+      return
+    }
+
     $running = (Test-Up 'http://127.0.0.1:45117/health') -or (Test-Up 'http://127.0.0.1:8787/health')
     if ($running) {
       Write-Info 'aptsy is already running. The new binary is used after a restart.'

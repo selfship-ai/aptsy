@@ -617,6 +617,15 @@ main() {
   info "Installed ${HOME}/.aptsy/hooks/aptsy-bridge"
   wire_shell_path
   "$APTSY" version </dev/null || true
+  if [[ "$NON_INTERACTIVE" == true ]] || ! has_terminal; then
+    info "This install cannot open a browser. Run: aptsy login && aptsy init && aptsy start"
+    return 0
+  fi
+  info "Sign in to your free Aptsy account. A browser will open."
+  if ! "$APTSY" login </dev/tty; then
+    info "Sign-in did not finish. Create the account if you were asked to, then run: aptsy login && aptsy init && aptsy start"
+    return 0
+  fi
   maybe_start
   run_init
   print_install_welcome
