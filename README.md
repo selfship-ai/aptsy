@@ -15,26 +15,30 @@ macOS and Linux (`amd64` or `arm64`):
 curl -fsSL https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.sh | bash
 ```
 
+Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.ps1 | iex
+```
+
 The script picks the matching release, installs `aptsy` and the hook helper, starts the daemon, then asks which tools to set up. MCP entries are written after the server is already listening.
 
-- Pin a version with `APTSY_VERSION=v0.1.0`.
-- Add `--non-interactive` to skip the questions. That installs into `/usr/local/bin` when you can write there, otherwise `~/.local/bin`, starts the daemon, then configures every tool it finds.
+- Pin a version with `APTSY_VERSION=v0.1.0` in the same command.
+- Skip the questions on macOS and Linux with `--non-interactive`. On Windows, set `APTSY_NONINTERACTIVE=1` before the PowerShell command. That installs into `/usr/local/bin` when you can write there, otherwise `~/.local/bin`. Windows always uses `%USERPROFILE%\.local\bin` and adds it to your user PATH. It then starts the daemon and configures every tool it finds.
 - Run it as yourself. It writes config in your home directory and asks for sudo only when copying `aptsy` into `/usr/local/bin` or registering the boot service.
-
-On Windows, use the zip from the [releases](https://github.com/selfship-ai/aptsy/releases) page.
 
 ## Use
 
 ```bash
 aptsy init      # find installed agents, write hooks and config; MCP entries wait until the server is up
-aptsy start     # run in the background, and start again at boot
-aptsy stop      # stop until the next boot or aptsy start
+aptsy start     # run in the background
+aptsy stop      # stop until the next aptsy start
 aptsy uninstall # remove Aptsy from this machine
 aptsy status    # check that it is up
 aptsy version
 ```
 
-`aptsy start` returns as soon as the daemon is up. It does not stay in the terminal. On Linux it installs a systemd service so Aptsy starts when the machine boots. On macOS it installs a launchd daemon that does the same. The first start asks for your password so it can register that service. There is no foreground mode.
+`aptsy start` returns as soon as the daemon is up. It does not stay in the terminal. On Linux it installs a systemd service so Aptsy starts when the machine boots. On macOS it installs a launchd daemon that does the same. The first start asks for your password so it can register that service. There is no foreground mode. On Windows it starts a background process for this sign-in. Run `aptsy start` again after you sign in next time.
 
 After init, use your coding agent as usual. Aptsy records each session locally. Browse them at `http://127.0.0.1:45117`.
 
@@ -58,8 +62,16 @@ Run the install command again. It replaces `aptsy` and `aptsy-bridge` and leaves
 
 ## Uninstall
 
+macOS and Linux:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.sh | bash -s -- --uninstall
+```
+
+Windows (PowerShell):
+
+```powershell
+$env:APTSY_UNINSTALL = '1'; irm https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.ps1 | iex
 ```
 
 If `aptsy` is already on your PATH:

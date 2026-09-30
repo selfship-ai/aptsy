@@ -3,6 +3,9 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.sh | bash
 #
+# Windows PowerShell:
+#   irm https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.ps1 | iex
+#
 # Optional:
 #   APTSY_VERSION=v0.1.0   pin a release instead of the latest
 #   --non-interactive        no questions: install to a writable bin dir,
@@ -30,6 +33,13 @@ Usage: install.sh [--non-interactive] [--uninstall]
                       configures every discovered tool.
   --uninstall         remove the boot service, hooks, ~/.aptsy, and
                       the aptsy command. Does not download a release.
+
+  On Windows, run the PowerShell installer instead:
+
+    irm https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.ps1 | iex
+
+  Pin a release with APTSY_VERSION=v0.1.0. Skip questions with
+  APTSY_NONINTERACTIVE=1. Remove Aptsy with APTSY_UNINSTALL=1.
 EOF
 }
 
@@ -84,8 +94,8 @@ detect_target() {
   case "$kernel" in
     Darwin) OS="darwin" ;;
     Linux) OS="linux" ;;
-    MINGW*|MSYS*|CYGWIN*)
-      die "Windows is not installed by this script. Download aptsy_*_windows_*.zip from https://github.com/selfship-ai/aptsy/releases"
+    MINGW*|MSYS*|CYGWIN*|Windows_NT)
+      die "Windows uses PowerShell. Run: irm https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.ps1 | iex"
       ;;
     *) die "unsupported operating system: ${kernel}" ;;
   esac
@@ -563,7 +573,32 @@ run_uninstall() {
   exit "$status"
 }
 
+# Git Bash can run this file. PowerShell cannot. Hand off before any Unix install step.
+handoff_windows() {
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*|Windows_NT) ;;
+    *) return 1 ;;
+  esac
+  local ps=""
+  if command -v powershell.exe >/dev/null 2>&1; then
+    ps="$(command -v powershell.exe)"
+  elif [[ -x /c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe ]]; then
+    ps="/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+  else
+    die "Windows uses PowerShell. Run: irm https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.ps1 | iex"
+  fi
+  if [[ "$UNINSTALL" == true ]]; then
+    export APTSY_UNINSTALL=1
+  fi
+  if [[ "$NON_INTERACTIVE" == true ]]; then
+    export APTSY_NONINTERACTIVE=1
+  fi
+  printf '%s\n' "Windows uses the PowerShell installer." >&2
+  exec "$ps" -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/selfship-ai/aptsy/main/install.ps1 | iex"
+}
+
 main() {
+  handoff_windows || true
   refuse_root
   if [[ "$UNINSTALL" == true ]]; then
     run_uninstall
