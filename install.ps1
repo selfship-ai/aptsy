@@ -314,7 +314,7 @@ try {
       Write-Info 'Sign in to your free Aptsy account. A browser will open.'
       & $Aptsy login --if-needed
       if ($LASTEXITCODE -ne 0) {
-        Write-Info 'Sign-in did not finish. Create the account if you were asked to, then run: aptsy login; aptsy init; aptsy start'
+        Write-Info 'Sign-in did not finish. Run: aptsy login; aptsy init; aptsy start'
         return
       }
     }
